@@ -1,4 +1,3 @@
-import numpy as np
 import nltk
 from collections import Counter
 from scipy.sparse import dok_matrix
@@ -24,9 +23,12 @@ def collocations(corpus, counts, window_size=4):
             window_end = min(len(tokens) - 1, j + (window_size // 2))
             occurences = tokens[window_start:window_end]
             for l in occurences:
-                a = word_to_idx[l]
-                b = word_to_idx[k]
-                cooccurences[a,b] += 1
-                cooccurences[b,a] += 1
- 
+                if l != k:
+                    a = word_to_idx[l]
+                    b = word_to_idx[k]
+                    cooccurences[a,b] += 1
+#                cooccurences[b,a] += 1
+    reciprocal = 1/sum(counts.values())
+    independent_probabilities = {i:o * reciprocal for i, o in zip(counts.keys(),counts.values())}
+    joint_probabilities = cooccurences.multiply(reciprocal)
     return cooccurences
