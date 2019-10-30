@@ -40,7 +40,7 @@ def collocations(corpus, counts, window_size=4):
             index_i = idx_to_word[i]
             index_j = idx_to_word[j]
             pmi = log(joint_probabilities[i,j]/independent_probabilities[index_i]*independent_probabilities[index_j],2)
-            cooccurences[i,j] = pmi
+            cooccurences[i,j] = max(0,pmi)
     print('finished computing')
     save_npz('cooccurence',coo_matrix(cooccurences))
     return cooccurences
