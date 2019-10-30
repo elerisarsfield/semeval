@@ -36,11 +36,20 @@ def collocations(corpus, counts, window_size=4):
     joint_probabilities = cooccurences.multiply(reciprocal)
     idx_to_word = list(word_to_idx.keys())
     print('Computing PPMI...')
+    ppmi = dok_matrix(shape)
     for i, j in zip(np.nonzero(cooccurences)[0], np.nonzero(cooccurences)[1]):
             index_i = idx_to_word[i]
             index_j = idx_to_word[j]
-            pmi = log(joint_probabilities[i,j]/independent_probabilities[index_i]*independent_probabilities[index_j],2)
-            cooccurences[i,j] = max(0,pmi)
+            frequency = cooccurences[i,j]
+            joint_probability = frequency / (frequency * vocab_size * vocab_size)
+            probability_i = (frequency * counts[index_i]) / (frequency * vocab_size * vocab_size)
+            probability_j = (frequency * counts[index_j]) / (frequency * vocab_size * vocab_size)
+            denominator = probability_i * probability_j
+            if denominator > 0:
+                pmi = log(joint_probability / (probability_i * probability_j),2)
+                ppmi[i,j] = max(0,pmi)
+            else:
+                ppmi[i,j] = 0
     print('finished computing')
     save_npz('cooccurence',coo_matrix(cooccurences))
     return cooccurences
