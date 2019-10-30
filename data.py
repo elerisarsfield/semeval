@@ -1,6 +1,7 @@
 import nltk
+import numpy as np
 from collections import Counter
-from scipy.sparse import dok_matrix
+from scipy.sparse import dok_matrix, coo_matrix, save_npz
 from math import log
 
 def split_words(filepath):
@@ -33,13 +34,13 @@ def collocations(corpus, counts, window_size=4):
     reciprocal = 1/sum(counts.values())
     independent_probabilities = {i:o * reciprocal for i, o in zip(counts.keys(),counts.values())}
     joint_probabilities = cooccurences.multiply(reciprocal)
-    pmi = lambda x,y: log(joint_probabilities[word_to_idx[x],word_to_idx[y]]/(independent_probabilities[x]*independent_probabilities[y]),2)
+    idx_to_word = list(word_to_idx.keys())
     print('Computing PPMI...')
-    for i in counts.keys():
-        for j in counts.keys():
-            index_i = word_to_idx[i]
-            index_j = word_to_idx[j]
-            if joint_probabilities[index_i,index_j] != 0:
-                cooccurences[index_i,index_j] = pmi(i,j)
+    for i, j in zip(np.nonzero(cooccurences)[0], np.nonzero(cooccurences)[1]):
+            index_i = idx_to_word[i]
+            index_j = idx_to_word[j]
+            pmi = log(joint_probabilities[i,j]/independent_probabilities[index_i]*independent_probabilities[index_j],2)
+            cooccurences[i,j] = pmi
     print('finished computing')
+    save_npz('cooccurence',coo_matrix(cooccurences))
     return cooccurences
