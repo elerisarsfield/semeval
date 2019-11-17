@@ -19,7 +19,7 @@ class Corpus:
             self.word_counts = Counter(words)
             return sentences
 
-    def collocations(self, corpus, window_size=4):
+    def collocations(self, corpus, window_size=10):
         """Build the co-occurence matrix"""
         vocab_size = len(self.word_counts)
         self.word_to_idx = {o:i for i,o in enumerate(self.word_counts.keys())}
