@@ -1,13 +1,17 @@
 import nltk
 import numpy as np
-from collections import Counter
+from collections import Counter, namedtuple
 from scipy.sparse import dok_matrix
+from scipy.spatial.distance import cosine
 from math import log
 
+SenseLocation = namedtuple("Sense Location",("idx", "probability"))
+
 class Corpus:
-    def __init__(self, source, stopword_k=100):
+    def __init__(self, source, stopword_k=100,alpha=1):
         """Basic preprocessing and identify collocations"""
         self.stopword_k = stopword_k
+        self.alpha = alpha
         corpus_data = self.split_words(source)
         self.collocations(corpus_data)
 
@@ -59,4 +63,29 @@ class Corpus:
                 ppmi[i,j] = 0
         print('finished computing')
         self.collocations = cooccurences
+        self.shape = cooccurences.shape
+        
+    def get_clusters(self,word):
+        idx = self.word_to_idx[word]
+        observations = self.collocations[idx]
+        senses = []
+        n = 0
+        for i in np.nonzero(observations)[1]:
+            new_sense_p = 1/(n+1)
+            best_sense = SenseLocation(0,0)
+            for loc,j in enumerate(senses):
+                sense_size = len(j)
+                sense_p = sense_size / (n + 1)
+                sense_similarity = sum(map(lambda x: cosine(
+                    self.collocations[i].toarray(),self.collocations[x].toarray()), j))
+                sense_p *= sense_similarity
+                if sense_p > best_sense.probability:
+                    best_sense = (loc, sense_p)
+            if best_sense.probability > new_sense_p:
+                senses[best_sense.idx].append(i)
+            else:
+                senses.append([i])
+            print(senses)
 
+    def process(self):
+        pass
