@@ -5,7 +5,7 @@ from scipy.sparse import dok_matrix
 from scipy.spatial.distance import cosine
 from math import log
 
-SenseLocation = namedtuple("Sense Location",("idx", "probability"))
+SenseLocation = namedtuple("SenseLocation","idx probability")
 
 class Corpus:
     def __init__(self, source, stopword_k=100,alpha=1):
@@ -80,12 +80,13 @@ class Corpus:
                     self.collocations[i].toarray(),self.collocations[x].toarray()), j))
                 sense_p *= sense_similarity
                 if sense_p > best_sense.probability:
-                    best_sense = (loc, sense_p)
+                    best_sense = SenseLocation(loc, sense_p)
             if best_sense.probability > new_sense_p:
                 senses[best_sense.idx].append(i)
             else:
                 senses.append([i])
-            print(senses)
+                n += 1
+        print([list(map(lambda x: self.idx_to_word[x], i)) for i in senses])
 
     def process(self):
         pass
