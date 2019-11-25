@@ -8,10 +8,11 @@ from math import log
 SenseLocation = namedtuple("SenseLocation","idx probability")
 
 class Corpus:
-    def __init__(self, source, stopword_k=100,alpha=1):
+    def __init__(self, source, stopword_k=100,alpha=-0.1,theta=1):
         """Basic preprocessing and identify collocations"""
         self.stopword_k = stopword_k
         self.alpha = alpha
+        self.theta = theta
         corpus_data = self.split_words(source)
         self.collocations(corpus_data)
 
@@ -23,20 +24,26 @@ class Corpus:
             self.word_counts = Counter(words)
             return sentences
 
-    def collocations(self, corpus, window_size=10):
+    def collocations(self, corpus, window_size=4):
         """Build the co-occurence matrix"""
         vocab_size = len(self.word_counts)
         self.word_to_idx = {o:i for i,o in enumerate(self.word_counts.keys())}
         shape = (vocab_size, vocab_size)
         print('Starting co-occurence matrix build...')
         cooccurences = dok_matrix(shape)
+        stopwords = [i[0] for i in self.word_counts.most_common(self.stopword_k)]
+        self.word_counts = self.word_counts - Counter(self.word_counts.most_common(self.stopword_k))
         for i in corpus:
             tokens = [i for i in nltk.word_tokenize(i)]
             for j, k in enumerate(tokens):
+                if k in stopwords:
+                    continue
                 window_start = max(0, j - (window_size // 2))
                 window_end = min(len(tokens) - 1, j + (window_size // 2))
                 occurences = tokens[window_start:window_end]
                 for l in occurences:
+                    if l in stopwords:
+                        continue
                     if l != k:
                         a = self.word_to_idx[l]
                         b = self.word_to_idx[k]
@@ -69,23 +76,21 @@ class Corpus:
         idx = self.word_to_idx[word]
         observations = self.collocations[idx]
         senses = []
-        n = 0
-        for i in np.nonzero(observations)[1]:
-            new_sense_p = 1/(n+1)
+        for n,i in enumerate(np.nonzero(observations)[1]):
+            new_sense_p = (self.theta + len(senses)*self.alpha)/(n+self.theta)
             best_sense = SenseLocation(0,0)
             for loc,j in enumerate(senses):
                 sense_size = len(j)
-                sense_p = sense_size / (n + 1)
+                sense_p = (sense_size - self.alpha)/ (n + self.theta)
                 sense_similarity = sum(map(lambda x: cosine(
                     self.collocations[i].toarray(),self.collocations[x].toarray()), j))
                 sense_p *= sense_similarity
                 if sense_p > best_sense.probability:
                     best_sense = SenseLocation(loc, sense_p)
-            if best_sense.probability > new_sense_p:
-                senses[best_sense.idx].append(i)
-            else:
+            if new_sense_p > best_sense.probability:
                 senses.append([i])
-                n += 1
+            else:
+                senses[best_sense.idx].append(i)
         print([list(map(lambda x: self.idx_to_word[x], i)) for i in senses])
 
     def process(self):
