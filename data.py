@@ -1,18 +1,19 @@
+import math
+import random
 import nltk
 import numpy as np
-from collections import Counter, namedtuple
+from collections import Counter
 from scipy.sparse import dok_matrix
 from scipy.spatial.distance import cosine
-from math import log
+from scipy.stats import dirichlet
+#from processes import CRF
 
-SenseLocation = namedtuple("SenseLocation","idx probability")
 
 class Corpus:
-    def __init__(self, source, stopword_k=100,alpha=-0.1,theta=1):
+    def __init__(self, source, stopword_k=100,alpha=1):
         """Basic preprocessing and identify collocations"""
         self.stopword_k = stopword_k
         self.alpha = alpha
-        self.theta = theta
         corpus_data = self.split_words(source)
         self.collocations(corpus_data)
 
@@ -64,34 +65,45 @@ class Corpus:
             probability_j = (frequency * self.word_counts[index_j]) / total
             denominator = probability_i * probability_j
             if denominator > 0:
-                pmi = log(joint_probability / (probability_i * probability_j),2)
+                pmi = math.log(joint_probability / (probability_i * probability_j),2)
                 ppmi[i,j] = max(0,pmi)
             else:
                 ppmi[i,j] = 0
         print('finished computing')
         self.collocations = cooccurences
         self.shape = cooccurences.shape
+        self.senses = [None] * self.shape[0]
         
     def get_clusters(self,word):
         idx = self.word_to_idx[word]
         observations = self.collocations[idx]
         senses = []
         for n,i in enumerate(np.nonzero(observations)[1]):
-            new_sense_p = (self.theta + len(senses)*self.alpha)/(n+self.theta)
-            best_sense = SenseLocation(0,0)
+            new_sense_p = self.alpha/(n+self.alpha)
+            similarities = [0] * len(senses)
             for loc,j in enumerate(senses):
                 sense_size = len(j)
-                sense_p = (sense_size - self.alpha)/ (n + self.theta)
-                sense_similarity = sum(map(lambda x: cosine(
-                    self.collocations[i].toarray(),self.collocations[x].toarray()), j))
-                sense_p *= sense_similarity
-                if sense_p > best_sense.probability:
-                    best_sense = SenseLocation(loc, sense_p)
-            if new_sense_p > best_sense.probability:
+                sense_p = sense_size/ (n + self.alpha)
+                sense_similarity = sum(map(lambda x: (np.dot(np.reshape(self.collocations[i].toarray(), -1), np.reshape(self.collocations[x].toarray(), -1))) / (self.collocations[i].size * self.collocations[x].size), j))
+                word_p = np.sum(self.collocations[i])
+                similarities[loc] = ((sense_similarity * sense_size) + self.alpha) / word_p
+            similarities.append(new_sense_p)
+            print(similarities)
+            prior = dirichlet(similarities).rvs()
+            assert math.isclose(np.sum(prior), 1)
+            prior = np.reshape(prior, -1)
+            assignment = random.random()
+            if assignment > np.sum(prior[:-1]):
                 senses.append([i])
             else:
-                senses[best_sense.idx].append(i)
-        print([list(map(lambda x: self.idx_to_word[x], i)) for i in senses])
+                assert len(prior) == len(senses) + 1
+                curr = 0
+                for j,p in enumerate(prior[:-1]):
+                    curr += p
+                    if curr > assignment:
+                        senses[j].append(i)
+                        break
+                else:
+                    print('Error in cluster assignment')
 
-    def process(self):
-        pass
+        print([list(map(lambda x: self.idx_to_word[x], i)) for i in senses])
