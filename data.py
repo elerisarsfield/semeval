@@ -3,6 +3,7 @@ import random
 import nltk
 import numpy as np
 from collections import Counter
+from functools import reduce
 from scipy.sparse import dok_matrix
 from scipy.spatial.distance import cosine
 from scipy.stats import dirichlet
@@ -16,6 +17,8 @@ class Corpus:
         self.alpha = alpha
         corpus_data = self.split_words(source)
         self.collocations(corpus_data)
+        for i, w in enumerate(self.idx_to_word):
+            self.senses[i] = self.get_clusters(w)
 
     def split_words(self, filepath):
         """Split text into sentences and extract word counts"""
@@ -25,7 +28,7 @@ class Corpus:
             self.word_counts = Counter(words)
             return sentences
 
-    def collocations(self, corpus, window_size=4):
+    def collocations(self, corpus, window_size=10):
         """Build the co-occurence matrix"""
         vocab_size = len(self.word_counts)
         self.word_to_idx = {o:i for i,o in enumerate(self.word_counts.keys())}
@@ -80,15 +83,20 @@ class Corpus:
         senses = []
         for n,i in enumerate(np.nonzero(observations)[1]):
             new_sense_p = self.alpha/(n+self.alpha)
+            if new_sense_p == 1.0:
+                senses.append([i])
+                continue
             similarities = [0] * len(senses)
             for loc,j in enumerate(senses):
                 sense_size = len(j)
-                sense_p = sense_size/ (n + self.alpha)
-                sense_similarity = sum(map(lambda x: (np.dot(np.reshape(self.collocations[i].toarray(), -1), np.reshape(self.collocations[x].toarray(), -1))) / (self.collocations[i].size * self.collocations[x].size), j))
                 word_p = np.sum(self.collocations[i])
-                similarities[loc] = ((sense_similarity * sense_size) + self.alpha) / word_p
+                sense_p = sense_size/ (n + self.alpha)
+#                sense_similarity = sum(map(lambda x: (np.dot(np.reshape(self.collocations[i].toarray(), -1), np.reshape(self.collocations[x].toarray(), -1))) / (self.collocations[i].size * self.collocations[x].size), j)) + self.alpha
+                sense_similarity = sum(map(lambda x: self.collocations[x,i] * self.word_counts[self.idx_to_word[i]], j))
+
+                similarities[loc] = (sense_similarity * sense_size + self.alpha) / (self.alpha + n)
             similarities.append(new_sense_p)
-            print(similarities)
+            # print(similarities)
             prior = dirichlet(similarities).rvs()
             assert math.isclose(np.sum(prior), 1)
             prior = np.reshape(prior, -1)
@@ -106,4 +114,6 @@ class Corpus:
                 else:
                     print('Error in cluster assignment')
 
-        print([list(map(lambda x: self.idx_to_word[x], i)) for i in senses])
+                
+#        print([list(map(lambda x: self.idx_to_word[x], i)) for i in senses])
+        return senses

@@ -68,7 +68,7 @@ class CRF(CRP):
                     self.dishes[i] += 1
                     return i
 
-crp = CRPMixture(1)
+crp = CRP(1)
 #crp = CRF(1,1)
 x = random.randint(0, 250)
 #print(f'Starting Chinese restaurant franchise with {x} customers')
