@@ -9,24 +9,23 @@ from scipy import stats, sparse
 
 
 class Corpus:
-    def __init__(self, reference, focus, output, stopword_k=100, floor=1,
-                 alpha=1, gamma=1, random_seed=42,
-                 window_size=10, max_iter=1000):
+    def __init__(self, reference, focus, output, floor=1,
+                 window_size=10):
         """Basic preprocessing and identify collocations"""
-        self.stopword_k = stopword_k
-        self.floor = floor
-        self.alpha = alpha
-        self.gamma = gamma
+        self.floor = floor + 1
         self.sentences = self.get_documents(
             reference) + self.get_documents(focus)
-        vocab_size = len(self.word_counts)
+        self.total_words = 0
+        self.preprocess()
+        self.vocab_size = len(self.word_counts)
 #        self.collocations(sentences)
 #        self.base = np.fromiter((np.sum(self.collocations[x])
 #                                 for x in range(self.shape[0])), float)
         # self.base = dirichlet(self.base,np.random.gamma(
         # self.base.shape,self.gamma)).rvs()
-        self.base = stats.dirichlet([1] * vocab_size)
-        self.senses = [sparse.dok_matrix((vocab_size, 1))] * vocab_size
+        self.base = stats.dirichlet([1] * self.vocab_size)
+        self.senses = [sparse.dok_matrix(
+            (self.vocab_size, 1))] * self.vocab_size
  #       for m, s in enumerate(sentences):
   #          w = nltk.word_tokenize(s)
 #            print(f'Sentence: {s}')
@@ -46,19 +45,19 @@ class Corpus:
             sentences = [i.strip() for i in f]
             return sentences
 
-    def preprocess(self, documents):
+    def preprocess(self):
         words = [j for i in self.sentences for j in nltk.word_tokenize(i)]
         self.word_counts = collections.Counter(words)
         stopwords = set(nltk.corpus.stopwords.words('english'))
         for i in self.word_counts.most_common()[::-1]:
-            if i[1] > self.floor:
-                break
-            stopwords.add(i[0])
+            if i[1] < self.floor:
+                stopwords.add(i[0])
         for i, s in enumerate(self.sentences):
             new = [i for i in s.split(' ') if i not in stopwords]
             self.sentences[i] = ' '.join(new).strip()
+            self.total_words += len(new)
         self.word_counts = collections.Counter(
-            [i for i in list(self.word_counts) if i not in stopwords])
+            [j for i in self.sentences for j in nltk.word_tokenize(i)])
 
     def get_clusters(self, word):
         idx = self.word_to_idx[word]
