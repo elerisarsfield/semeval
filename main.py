@@ -1,4 +1,5 @@
 import nltk
+import random
 from corpus import Corpus
 from hdp import HDP
 
@@ -19,16 +20,25 @@ def main():
     print('Loading words...')
     corpus = Corpus(START_CORPUS, END_CORPUS, 'answer')
     print('Setting up initial partition...')
+    for i in corpus.docs:
+        i.init_partition(1)
+
     hdp = HDP(corpus.vocab_size)
-    hdp.init_partition(corpus.sentences)
+    hdp.init_partition(corpus.docs)
+    for i in corpus.docs:
+        i.topic_to_distribution(hdp.senses.shape[0])
     hdp.gibbs(False, False)
     print('Done')
     it = 0
+    stopping = 1.0
     print(f'Running Gibbs sampling for {MAX_ITERS} iterations')
     while it < MAX_ITERS:
         it += 1
+        for j in corpus.docs:
+            for i in j.words:
+            hdp.sample_table(j, i)
         hdp.gibbs()
-        likelihood = hdp.llikelihood()
+        hdp.split_merge()
     print('Done')
 
 
