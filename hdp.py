@@ -2,7 +2,6 @@ import random
 import math
 import numpy as np
 from scipy import stats
-from utils import cond_density, cond_likelihood, metropolis_hastings
 
 
 class HDP():
@@ -61,28 +60,95 @@ class HDP():
             1.0, 1.0, (len(self.senses), self.vocab_size)) * (
                 len(documents) / self.vocab_size)
         self.smoothing = [1] * len(documents)
-        for i, p in enumerate(senses):
-            senses[i] = p/np.sum(p)
         self.senses = np.array(senses)
 
-    def sample_table(self, j, i):
+    def sample_table(self, j, i, ppmi):
         x = j.words[i]
-        current = j.topic_to_global_idx[i]
-        exclusive = j.topic_to_global_idx.count(current) - 1
-        size = len(j.topic_to_global_idx)
-        p_old = 1/(exclusive + 1)
-        p_new = 1/(self.alpha + 1)
-        assert math.isclose(p_old + p_new, 1)
-        prior = [p_old, p_new]
-        cond = np.zeros((len(self.sense_indices + 1),))
-        for t in range(len(self.sense_indices)):
-            size = j.topic_to_global_idx.count(t)
-            size = size - 1 if i == t else size
-        new_cond_p = 1
-        for k in range(len(self.sense_indices)):
-            size = self.sense_counts[k]
-            curr = size/sum(self.sense_counts+self.gamma)
-            new_cond_p *= curr
+        total_assigned = np.count_nonzero(self.senses)
+        prior_d = ppmi.sum() * (self.gamma/(self.gamma + total_assigned))
+        cond = np.zeros((len(j.partition) + 1,))
+        new_cond_p = 0
+        curr, global_curr = -1, -1
+        for t, p in enumerate(j.partition):
+            size = len(p)
+            if x in p:
+                size -= 1
+                curr = t
+                global_curr = j.topic_to_global_idx[curr]
+            k = j.topic_to_global_idx[t]
+            topic_word_density = self.senses[k] * ppmi.T
+            cond[t] = size * topic_word_density
+            new_cond_p += (np.count_nonzero(self.senses[k])/(
+                total_assigned + self.gamma)) * topic_word_density
+        new_cond_p += prior_d
+        new_cond_p *= self.alpha
+        cond[-1] = new_cond_p
+        cond /= cond.sum()
+        sample = random.random()
+        pos = 0
+        for t, v in enumerate(cond):
+            pos += v
+            if v > sample:
+                # if assigning to current table just return
+                if t == global_curr:
+                    return
+                # reassign to a different table
+                elif t < len(j.partition):
+                    new = j.topic_to_global_idx[t]
+                    if new != global_curr:
+                        self.senses[global_curr][i] -= 1
+                        self.senses[t][i] += 1
+                        j.topics[global_curr] -= self.eta
+                        j.topics[t] += self.eta
+                    j.partition[curr].remove(x)
+                    j.partition[t].append(x)
+                # create a new table
+                else:
+                    topic = self.sample_topic(ppmi)
+                    j.partition[curr].remove(x)
+                    j.partition.append([x])
+                    j.topic_to_global_idx.append(topic)
+                    if topic < len(self.senses):
+                        if topic != global_curr:
+                            j.topics[global_curr] -= self.eta
+                            j.topics[topic] += self.eta
+                            self.senses[global_curr][i] -= 1
+                            self.senses[topic][i] += 1
+                            self.sense_indices[topic].append(
+                                (j.idx, len(j.partition) - 1))
+                    else:
+                        j.topics[global_curr] -= self.eta
+                        j.topics = np.append(j.topics, self.eta)
+                        self.senses[global_curr][i] -= 1
+                        new = np.zeros((1, self.senses.shape[1]))
+                        new[0][i] = 1
+                        self.senses = np.concatenate((self.senses, new))
+                        self.sense_indices.append(
+                            (j.idx, len(j.partition) - 1))
+                if not all(j.partition):
+                    t = j.partition.index([])
+                    del j.partition[t]
+                    k = j.topic_to_global_idx.pop(t)
+                    if len(self.sense_indices[k]) == 0:
+                        self.senses[k] = np.zeros(self.senses[k].shape)
+                break
+
+    def sample_topic(self, ppmi):
+        cond = np.zeros((self.senses.shape[0] + 1,))
+        for k in range(self.senses.shape[0]):
+            size = np.count_nonzero(self.senses[k])
+            topic_word_density = self.senses[k] * ppmi.T
+            cond[k] = size * topic_word_density
+        cond[-1] = ppmi.sum() * self.gamma
+        assert cond.sum() > 0
+        cond /= cond.sum()
+        sample = random.random()
+        curr = 0
+        for k, p in enumerate(cond):
+            curr += p
+            if curr > sample:
+                return k
+        return len(cond) - 1
 
     def gibbs(self, permute=True, remove=True):
         if permute:

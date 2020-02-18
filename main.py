@@ -27,18 +27,18 @@ def main():
     hdp.init_partition(corpus.docs)
     for i in corpus.docs:
         i.topic_to_distribution(hdp.senses.shape[0])
-    hdp.gibbs(False, False)
+
     print('Done')
     it = 0
     stopping = 1.0
-    print(f'Running Gibbs sampling for {MAX_ITERS} iterations')
+    print(f'Running Gibbs sampling for {MAX_ITERS} iterations...')
     while it < MAX_ITERS:
         it += 1
         for j in corpus.docs:
-            for i in j.words:
-            hdp.sample_table(j, i)
-        hdp.gibbs()
-        hdp.split_merge()
+            for i in range(len(j.words)):
+                hdp.sample_table(j, i, corpus.collocations[j.words[i]])
+        if it % 10 == 0:
+            print(f'Finished {it} iterations')
     print('Done')
 
 

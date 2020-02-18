@@ -105,37 +105,25 @@ class Corpus:
 
     def collocations(self, corpus, window_size=10):
         """Build the co-occurence matrix"""
-        vocab_size = len(self.word_counts)
-        self.word_to_idx = {o: i for i,
-                            o in enumerate(self.word_counts.keys())}
-        shape = (vocab_size, vocab_size)
+        shape = (self.vocab_size, self.vocab_size)
         print('Starting co-occurence matrix build...')
-        cooccurences = dok_matrix(shape)
-        stopwords = [i[0]
-                     for i in self.word_counts.most_common(self.stopword_k)]
-        self.word_counts = self.word_counts - \
-            Counter(self.word_counts.most_common(self.stopword_k))
+        cooccurences = sparse.dok_matrix(shape)
         for i in corpus:
-            tokens = [i for i in nltk.word_tokenize(i)]
-            for j, k in enumerate(tokens):
-                if k in stopwords:
+            for j, k in enumerate(i):
+                if k not in self.word_to_idx:
                     continue
                 window_start = max(0, j - (window_size // 2))
-                window_end = min(len(tokens) - 1, j + (window_size // 2))
-                occurences = tokens[window_start:window_end]
+                window_end = min(len(i) - 1, j + (window_size // 2))
+                occurences = i[window_start:window_end]
                 for l in occurences:
-                    if l in stopwords:
-                        continue
-                    if l != k:
+                    if l != k and l in self.word_to_idx:
                         a = self.word_to_idx[l]
                         b = self.word_to_idx[k]
                         cooccurences[a, b] += 1
 
         reciprocal = 1/sum(self.word_counts.values())
-
-        self.idx_to_word = list(self.word_to_idx.keys())
         print('Computing PPMI...')
-        ppmi = dok_matrix(shape)
+        ppmi = sparse.dok_matrix(shape)
         total = np.sum(cooccurences)
         for i, j in zip(np.nonzero(cooccurences)[0], np.nonzero(cooccurences)[1]):
             index_i = self.idx_to_word[i]
@@ -154,7 +142,6 @@ class Corpus:
         print('finished computing')
         self.collocations = cooccurences
         self.shape = cooccurences.shape
-        self.senses = [None] * self.shape[0]
 
     def get_clusters(self, word):
         idx = self.word_to_idx[word]
