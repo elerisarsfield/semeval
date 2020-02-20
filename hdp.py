@@ -1,11 +1,13 @@
 import random
 import math
 import numpy as np
+import os
+import pickle
 from scipy import stats
 
 
 class HDP():
-    def __init__(self, vocab_size, eta=0.1, alpha=1, gamma=1):
+    def __init__(self, vocab_size, output, eta=0.1, alpha=1, gamma=1):
         self.eta = eta
         self.alpha = alpha
         self.gamma = gamma
@@ -15,6 +17,7 @@ class HDP():
         self.pi = []
         self.vocab_size = vocab_size
         self.beta = []
+        self.output = output
 
     def init_partition(self, documents):
         N = 0
@@ -83,7 +86,10 @@ class HDP():
         new_cond_p += prior_d
         new_cond_p *= self.alpha
         cond[-1] = new_cond_p
-        cond /= cond.sum()
+        if cond.sum() > 0:
+            cond /= cond.sum()
+        else:
+            return
         sample = random.random()
         pos = 0
         for t, v in enumerate(cond):
@@ -300,3 +306,8 @@ class HDP():
     def llikelihood(self):
         likelihood = 0
         likelihood += len(self.docs) * math.lgamma(self.alpha)
+
+    def save(self, it):
+        filename = 'senses_'+str(it)+'.pkl'
+        out = os.path.join(self.output, filename)
+        pickle.dump(self, open(out, 'wb'))
