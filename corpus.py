@@ -8,8 +8,27 @@ import pickle
 from scipy import stats, sparse
 
 
+class Word():
+    def __init__(self, word, idx, senses):
+        self.word = word
+        self.idx = idx
+        self.senses = np.zeros((senses, 2))
+
+    def calculate(self):
+        """
+        Calculate the score according to novelty_diff method in Cook et al 2014
+
+        Returns: (max score, novel sense index)
+        """
+        indices = np.unique(np.nonzero(self.senses))
+        stripped = self.senses[~np.all(self.senses == 0, axis=1)]
+        scores = stripped/stripped.sum(axis=1)[:, None]
+        novelty = scores[:, 1] - scores[:, 0]
+        return (novelty.max(), indices[np.argmax(novelty)])
+
+
 class Document():
-    def __init__(self, idx, doc):
+    def __init__(self, idx, doc, category):
         self.idx = idx
         self.partition = []
         self.topic_to_global_idx = []
@@ -20,6 +39,8 @@ class Document():
         self.length = len(self.words) - 1
         self.total = sum(self.counts)
         self.topics = []
+        self.it = 0
+        self.category = category
 
     def init_partition(self, alpha):
         N = 0
@@ -59,7 +80,7 @@ class Corpus:
         self.docs = []
         self.word_to_idx = None
         self.sentences = self.get_documents(
-            reference) + self.get_documents(focus)
+            reference, 'reference') + self.get_documents(focus, 'focus')
         self.collocations(self.sentences)
 #        self.base = np.fromiter((np.sum(self.collocations[x])
 #                                 for x in range(self.shape[0])), float)
@@ -75,7 +96,7 @@ class Corpus:
  #           if m > 10:
   #              break
 
-    def get_documents(self, filepath):
+    def get_documents(self, filepath, origin):
         """Split text into sentences and extract word counts"""
         with open(filepath, 'r') as f:
             sentences = self.preprocess([i.strip() for i in f])
@@ -85,7 +106,7 @@ class Corpus:
             self.idx_to_word = [i for i in self.word_to_idx.keys()]
             for i, s in enumerate(sentences):
                 s = [self.word_to_idx[i] for i in s]
-                doc = Document(i, s)
+                doc = Document(i, s, origin)
                 self.docs.append(doc)
             return sentences
 
@@ -93,9 +114,9 @@ class Corpus:
         words = [j for i in sentences for j in nltk.word_tokenize(i)]
         self.word_counts = collections.Counter(words)
         stopwords = set(nltk.corpus.stopwords.words('english'))
-        for i in self.word_counts.most_common()[::-1]:
-            if i[1] < self.floor:
-                stopwords.add(i[0])
+#        for i in self.word_counts.most_common()[::-1]:
+ #           if i[1] < self.floor:
+  #              stopwords.add(i[0])
         for i, s in enumerate(sentences):
             sentences[i] = [i for i in s.split(' ') if i not in stopwords]
             self.total_words += len(sentences[i])
@@ -193,5 +214,7 @@ class Corpus:
         return senses
 
     def save(self):
-        out = os.path.join(self.output, 'model.pkl')
+        self.it += 1
+        filename = 'corpus_'+str(self.it)+'.pkl'
+        out = os.path.join(self.output, filename)
         pickle.dump(self, open(out, 'wb'))
