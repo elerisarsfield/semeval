@@ -1,6 +1,6 @@
 # 2019/20 Computer Science Project
 ## Requirements
-The project is in Python, and requires a version of at least *3.6*. To install the required libraries, run
+The project is in Python, and requires a version of at least **3.6**. To install the required libraries, run
 ```python
 pip3 install -r requirements.txt
 ```

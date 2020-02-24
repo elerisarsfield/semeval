@@ -1,6 +1,8 @@
 import nltk
+import scipy.spatial.distance as dist
 import argparse
 import time
+import os
 import utils
 from corpus import Corpus, Word
 from hdp import HDP
@@ -40,13 +42,21 @@ def main():
         nltk.data.find('tokenizers/punkt')
     except LookupError:
         nltk.download('punkt')
+
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
+
+    save_path = os.path.join(args.output, 'saves')
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
     print('Loading words...')
-    corpus = Corpus(args.start_corpus, args.end_corpus, args.output)
+    corpus = Corpus(args.start_corpus, save_path, args.end_corpus, args.floor, args.window_size)
     print('Setting up initial partition...')
     for i in corpus.docs:
         i.init_partition(args.alpha)
 
-    hdp = HDP(corpus.vocab_size, args.output)
+    hdp = HDP(corpus.vocab_size, save_path, eta=args.eta, alpha=args.alpha, gamma=args.gamma)
     hdp.init_partition(corpus.docs)
     for i in corpus.docs:
         i.topic_to_distribution(hdp.senses.shape[0])
@@ -60,7 +70,7 @@ def main():
         for j in corpus.docs:
             for i in range(len(j.words)):
                 hdp.sample_table(j, i, corpus.collocations[j.words[i]])
-        if it % 10 == 0:
+        if it % 5 == 0:
             corpus.save()
             print(f'Finished {it} iterations')
     for i in hdp.senses:
@@ -88,8 +98,43 @@ def main():
 
     for k, v in words.items():
         v = v.calculate()
+    assert max(words.values()) <= 1
+    assert min(words.values()) >= 0
     if args.semeval_mode:
+        print(f'Running separate inference on the two corpora...')
         targets = utils.get_targets(args.targets)
+        corpus1 = Corpus(args.start_corpus, save_path, floor=args.floor, window_size=args.window_size)
+        corpus2 = Corpus(args.start_corpus, save_path, floor=args.floor, window_size=args.window_size)
+        hdp = HDP(corpus1.vocab_size, save_path, eta=args.eta, alpha=args.alpha, gamma=args.gamma)
+        hdp.init_partition(corpus1.docs)
+        it = 0
+        while it < args.max_iters:
+            it += 1
+            for j in corpus.docs:
+                for i in range(len(j.words)):
+                    hdp.sample_table(j, i, corpus1.collocations[j.words[i]])
+        for i in hdp.senses:
+            i /= i.sum()
+        dist_1 = hdp.senses
+        hdp = HDP(corpus2.vocab_size, save_path, eta=args.eta, alpha=args.alpha, gamma=args.gamma)
+        hdp.init_partition(corpus2.docs)
+        it = 0
+        while it < args.max_iters:
+            it += 1
+            for j in corpus.docs:
+                for i in range(len(j.words)):
+                    hdp.sample_table(j, i, corpus2.collocations[j.words[i]])
+        for i in hdp.senses:
+            i /= i.sum()
+        dist_2 = hdp.senses
+        for i in targets:
+            index = (corpus1.word_to_idx[i], corpus2.word_to_idx[i])
+            jensenshannon = dist.jensenshannon(dist1[index[0]], dist2[index[1]])
+        print('Done.')
+        
+    for i in corpus.docs:
+        i.topic_to_distribution(hdp.senses.shape[0])
+
     else:
         top_k = 50
         top = sorted(words, key=words.get, reverse=True)[:top_k]
