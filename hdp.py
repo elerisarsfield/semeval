@@ -303,10 +303,6 @@ class HDP():
         for k in range(len(self.senses)):
             self.smoothing[k] = self.alpha * self.pi[k]
 
-    def llikelihood(self):
-        likelihood = 0
-        likelihood += len(self.docs) * math.lgamma(self.alpha)
-
     def save(self, it):
         filename = 'senses_'+str(it)+'.pkl'
         out = os.path.join(self.output, filename)

@@ -81,20 +81,7 @@ class Corpus:
         self.word_to_idx = None
         self.sentences = self.get_documents(
             reference, 'reference') + self.get_documents(focus, 'focus')
-        self.collocations(self.sentences)
-#        self.base = np.fromiter((np.sum(self.collocations[x])
-#                                 for x in range(self.shape[0])), float)
-        # self.base = dirichlet(self.base,np.random.gamma(
-        # self.base.shape,self.gamma)).rvs()
-#        self.base = stats.dirichlet([1] * self.vocab_size)
-#        self.senses = [sparse.dok_matrix(
- #           (self.vocab_size, 1))] * self.vocab_size
-   # for i, _ in enumerate(w):
-     #           window_start = max(i-(window_size//2), 0)
-      #          window_end = min(len(w) - 1, i + (window_size // 2))
-       #         context = w[window_start:window_end]
- #           if m > 10:
-  #              break
+        self.collocations(self.sentences, window_size)
 
     def get_documents(self, filepath, origin):
         """Split text into sentences and extract word counts"""
@@ -164,56 +151,8 @@ class Corpus:
         self.collocations = cooccurences
         self.shape = cooccurences.shape
 
-    def get_clusters(self, word):
-        idx = self.word_to_idx[word]
-        observations = self.collocations[idx]
-        senses = []
-        for n, i in enumerate(np.nonzero(observations)[1]):
-            new_sense_p = self.alpha/(n+self.alpha)
-            if new_sense_p == 1.0:
-                senses.append([i])
-                continue
-            similarities = [0] * len(senses)
-            for loc, j in enumerate(senses):
-                sense_size = len(j)
-                word_p = np.sum(self.collocations[i])
-                sense_p = sense_size / (n + self.alpha)
-                # sense_similarity = sum(map(lambda x: (
-                # np.dot(np.reshape(self.collocations[i].toarray(), -1),
-                # np.reshape(self.collocations[x].toarray(), -1))) /
-                # (self.collocations[i].size * self.collocations[x].size),
-                # j)) + self.alpha
-                sense_similarity = sum(
-                    map(lambda x: self.collocations[x, i] *
-                        self.word_counts[self.idx_to_word[i]], j))
-
-                similarities[loc] = (
-                    sense_similarity * sense_size + self.alpha
-                ) / (self.alpha + n)
-            similarities.append(new_sense_p)
-            # print(similarities)
-            prior = stats.dirichlet(similarities, self.alpha).rvs()
-            assert math.isclose(np.sum(prior), 1)
-            prior = np.reshape(prior, -1)
-            assignment = random.random()
-            if assignment > np.sum(prior[:-1]):
-                senses.append([i])
-            else:
-                assert len(prior) == len(senses) + 1
-                curr = 0
-                for j, p in enumerate(prior[:-1]):
-                    curr += p
-                    if curr > assignment:
-                        senses[j].append(i)
-                        break
-                else:
-                    print('Error in cluster assignment')
-
-
-#        print([list(map(lambda x: self.idx_to_word[x], i)) for i in senses])
-        return senses
-
     def save(self):
+        """Save the corpus to a file"""
         self.it += 1
         filename = 'corpus_'+str(self.it)+'.pkl'
         out = os.path.join(self.output, filename)

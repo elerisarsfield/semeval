@@ -1,11 +1,28 @@
 import nltk
-import numpy as np
+import argparse
 from corpus import Corpus, Word
 from hdp import HDP
 
-START_CORPUS = 'trial_data_public/corpora/english/corpus1/corpus1.txt'
-END_CORPUS = 'trial_data_public/corpora/english/corpus2/corpus2.txt'
-MAX_ITERS = 25
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    'start_corpus', type=str, help='address of the older (reference) corpus')
+parser.add_argument('end_corpus', type=str,
+                    help='address of the newer (focus) corpus')
+parser.add_argument('targets', type=str, help='address of the target words')
+parser.add_argument('output', type=str, help='address to write output to')
+parser.add_argument('--max_iters', type=int, metavar='N', default=25,
+                    help='maximum number of iterations to run sampling for')
+parser.add_argument('--alpha', type=float, default=1.0,
+                    help='alpha value, default 1.0')
+parser.add_argument('--gamma', type=float, default=1.0,
+                    help='gamma value, default 1.0')
+parser.add_argument('--eta', type=float, default=0.1,
+                    help='eta value, default 0.1')
+parser.add_argument('--window_size', metavar='W', type=int, default=10,
+                    help='size of context window to use, default 10')
+parser.add_argument('--floor', type=int, metavar='F', default=1,
+                    help='minimum number of occurrences to be considered, default 1')
+args = parser.parse_args()
 
 
 def main():
@@ -18,12 +35,12 @@ def main():
     except LookupError:
         nltk.download('punkt')
     print('Loading words...')
-    corpus = Corpus(START_CORPUS, END_CORPUS, 'answer')
+    corpus = Corpus(args.start_corpus, args.end_corpus, args.output)
     print('Setting up initial partition...')
     for i in corpus.docs:
-        i.init_partition(1)
+        i.init_partition(args.alpha)
 
-    hdp = HDP(corpus.vocab_size, 'answer')
+    hdp = HDP(corpus.vocab_size, args.output)
     hdp.init_partition(corpus.docs)
     for i in corpus.docs:
         i.topic_to_distribution(hdp.senses.shape[0])
@@ -31,8 +48,8 @@ def main():
     print('Done')
     it = 0
     stopping = 1.0
-    print(f'Running Gibbs sampling for {MAX_ITERS} iterations...')
-    while it < MAX_ITERS:
+    print(f'Running Gibbs sampling for {args.max_iters} iterations...')
+    while it < args.max_iters:
         it += 1
         for j in corpus.docs:
             for i in range(len(j.words)):
