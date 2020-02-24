@@ -5,7 +5,7 @@ import numpy as np
 import collections
 import os
 import pickle
-from scipy import stats, sparse
+from scipy import sparse
 
 
 class Word():
@@ -65,7 +65,8 @@ class Document():
 
     def topic_to_distribution(self, topics, eta=0.1):
         self.topics = np.fromiter((eta*self.topic_to_global_idx.count(
-            i) if i in self.topic_to_global_idx else 0 for i in np.arange(topics)),
+            i) if i in self.topic_to_global_idx else 0 for i in np.arange(
+                topics)),
             dtype=np.float32, count=topics)
 
 
@@ -73,7 +74,7 @@ class Corpus:
     def __init__(self, reference, focus, output, floor=1,
                  window_size=10):
         """Basic preprocessing and identify collocations"""
-        self.floor = floor
+        self.floor = floor + 1
         self.total_words = 0
         self.vocab_size = 0
         self.word_counts = None
@@ -101,9 +102,9 @@ class Corpus:
         words = [j for i in sentences for j in nltk.word_tokenize(i)]
         self.word_counts = collections.Counter(words)
         stopwords = set(nltk.corpus.stopwords.words('english'))
-#        for i in self.word_counts.most_common()[::-1]:
- #           if i[1] < self.floor:
-  #              stopwords.add(i[0])
+        for i in self.word_counts.most_common()[::-1]:
+            if i[1] < self.floor:
+                stopwords.add(i[0])
         for i, s in enumerate(sentences):
             sentences[i] = [i for i in s.split(' ') if i not in stopwords]
             self.total_words += len(sentences[i])
