@@ -39,7 +39,6 @@ class Document():
         self.length = len(self.words) - 1
         self.total = sum(self.counts)
         self.topics = []
-        self.it = 0
         self.category = category
 
     def init_partition(self, alpha):
@@ -71,26 +70,30 @@ class Document():
 
 
 class Corpus:
-    def __init__(self, reference, focus, output, floor=1,
+    def __init__(self, reference, output, focus=None, floor=1,
                  window_size=10):
         """Basic preprocessing and identify collocations"""
         self.floor = floor + 1
         self.total_words = 0
         self.vocab_size = 0
-        self.word_counts = None
+        self.output = output
+        self.word_counts = collections.Counter()
         self.docs = []
         self.word_to_idx = None
-        self.sentences = self.get_documents(
-            reference, 'reference') + self.get_documents(focus, 'focus')
+        self.it = 0
+        self.sentences = self.get_documents(reference, 'reference')
+        if focus:
+            self.sentences += self.get_documents(focus, 'focus')
+        self.vocab_size = len(self.word_counts)
         self.collocations(self.sentences, window_size)
 
     def get_documents(self, filepath, origin):
         """Split text into sentences and extract word counts"""
         with open(filepath, 'r') as f:
             sentences = self.preprocess([i.strip() for i in f])
-            self.vocab_size = len(self.word_counts)
             self.word_to_idx = {i: o for o,
                                 i in enumerate(self.word_counts.keys())}
+
             self.idx_to_word = [i for i in self.word_to_idx.keys()]
             for i, s in enumerate(sentences):
                 s = [self.word_to_idx[i] for i in s]
@@ -100,15 +103,15 @@ class Corpus:
 
     def preprocess(self, sentences):
         words = [j for i in sentences for j in nltk.word_tokenize(i)]
-        self.word_counts = collections.Counter(words)
+        word_counts = collections.Counter(words)
         stopwords = set(nltk.corpus.stopwords.words('english'))
-        for i in self.word_counts.most_common()[::-1]:
+        for i in word_counts.most_common()[::-1]:
             if i[1] < self.floor:
                 stopwords.add(i[0])
         for i, s in enumerate(sentences):
             sentences[i] = [i for i in s.split(' ') if i not in stopwords]
             self.total_words += len(sentences[i])
-        self.word_counts = collections.Counter(
+        self.word_counts += collections.Counter(
             [j for i in sentences for j in i])
         return [i for i in sentences if len(i) > 0]
 
