@@ -76,13 +76,14 @@ def main():
     it = 0
     print(f'Running Gibbs sampling for {args.max_iters} iterations...')
     while it < args.max_iters:
-        it += 1
         for j in corpus.docs:
             for i in range(len(j.words)):
                 hdp.sample_table(j, i, corpus.collocations[j.words[i]])
+        it += 1
         if it % 5 == 0:
             corpus.save()
             print(f'Finished {it} iterations')
+        print(f'Iteration {it}/{args.max_iters}')
     for i in hdp.senses:
         i /= i.sum()
     print('Done')
