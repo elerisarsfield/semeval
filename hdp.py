@@ -102,8 +102,8 @@ class HDP():
                 elif t < len(j.partition):
                     new = j.topic_to_global_idx[t]
                     if new != global_curr:
-                        self.senses[global_curr][i] -= 1
-                        self.senses[t][i] += 1
+                        self.senses[global_curr][x] -= 1
+                        self.senses[t][x] += 1
                         j.topics[global_curr] -= self.eta
                         j.topics[t] += self.eta
                     j.partition[curr].remove(x)
@@ -118,16 +118,16 @@ class HDP():
                         if topic != global_curr:
                             j.topics[global_curr] -= self.eta
                             j.topics[topic] += self.eta
-                            self.senses[global_curr][i] -= 1
-                            self.senses[topic][i] += 1
+                            self.senses[global_curr][x] -= 1
+                            self.senses[topic][x] += 1
                             self.sense_indices[topic].append(
                                 (j.idx, len(j.partition) - 1))
                     else:
                         j.topics[global_curr] -= self.eta
                         j.topics = np.append(j.topics, self.eta)
-                        self.senses[global_curr][i] -= 1
+                        self.senses[global_curr][x] -= 1
                         new = np.zeros((1, self.senses.shape[1]))
-                        new[0][i] = 1
+                        new[0][x] = 1
                         self.senses = np.concatenate((self.senses, new))
                         self.sense_indices.append(
                             (j.idx, len(j.partition) - 1))

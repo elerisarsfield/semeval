@@ -1,5 +1,6 @@
 import nltk
 import scipy.spatial.distance as dist
+import numpy as np
 import argparse
 import time
 import os
@@ -82,7 +83,6 @@ def main():
         it += 1
         if it % 5 == 0:
             corpus.save()
-            print(f'Finished {it} iterations')
         print(f'Iteration {it}/{args.max_iters}')
     for i in hdp.senses:
         i /= i.sum()
@@ -106,8 +106,7 @@ def main():
                     else:
                         word.senses[sense][1] += 1
                     words[word.word] = word
-    for k, v in words.items():
-        words[k] = v.calculate()
+    print('Done.')
     if args.semeval_mode:
         targets = utils.get_targets(args.targets)
         with open(os.path.join(os.path.join(args.output, 'task1'),
@@ -116,56 +115,30 @@ def main():
                 t = targets[i][0]
                 pos = targets[i][1]
                 recombine = t+'_'+pos
-                score = words[t][0]
+                score = words[t].calculate()[0]
                 different = 1 if score > args.threshold else 0
                 f.write(f'{recombine} {different}\n')
-
-        print(f'Running separate inference on the two corpora...')
-
-        corpus1 = Corpus(args.start_corpus, save_path,
-                         floor=args.floor, window_size=args.window_size)
-        corpus2 = Corpus(args.start_corpus, save_path,
-                         floor=args.floor, window_size=args.window_size)
-        hdp = HDP(corpus1.vocab_size, save_path, eta=args.eta,
-                  alpha=args.alpha, gamma=args.gamma)
-        hdp.init_partition(corpus1.docs)
-        it = 0
-        while it < args.max_iters:
-            it += 1
-            for j in corpus.docs:
-                for i in range(len(j.words)):
-                    hdp.sample_table(j, i, corpus1.collocations[j.words[i]])
-        for i in hdp.senses:
-            i /= i.sum()
-        dist_1 = hdp.senses
-        hdp = HDP(corpus2.vocab_size, save_path, eta=args.eta,
-                  alpha=args.alpha, gamma=args.gamma)
-        hdp.init_partition(corpus2.docs)
-        it = 0
-        while it < args.max_iters:
-            it += 1
-            for j in corpus.docs:
-                for i in range(len(j.words)):
-                    hdp.sample_table(j, i, corpus2.collocations[j.words[i]])
-        for i in hdp.senses:
-            i /= i.sum()
-        dist_2 = hdp.senses
         with open(os.path.join(os.path.join(args.output, 'task2'), 'english.txt'), 'w') as f:
             for i in range(len(targets)):
                 t = targets[i][0]
                 pos = targets[i][1]
                 recombine = t+'_'+pos
-                index = (corpus1.word_to_idx[t], corpus2.word_to_idx[t])
+                word = words[t]
+                scores = word.senses[~np.all(word.senses == 0, axis=1)]
+
+                dist_1 = scores[:, 0]
+                dist_2 = scores[:, 1]
                 jensenshannon = dist.jensenshannon(
-                    dist_1[index[0]], dist_2[index[1]])
-                f.write(f'{recombine} {jensenshannon}\n')
-        print('Done.')
+                    dist_1, dist_2)
+                f.write(f'{recombine} {jensenshannon:.4f}\n')
 
     else:
-        top_k = 50
-        top = sorted(words, key=words.get, reverse=True)[:top_k]
-        print(f'Top {top_k} most differing words:')
-        print(top)
+        for k, v in words.items():
+            words[k] = v.calculate()
+            top_k = 50
+            top = sorted(words, key=words.get, reverse=True)[:top_k]
+            print(f'Top {top_k} most differing words:')
+            print(top)
     end_time = time.time()
     print(f'Ran project in {end_time - start_time} seconds')
 
