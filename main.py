@@ -109,27 +109,32 @@ def main():
     print('Done.')
     if args.semeval_mode:
         targets = utils.get_targets(args.targets)
+        results = []
+        for i in range(len(targets)):
+            t = targets[i][0]
+            pos = targets[i][1]
+            recombine = t+'_'+pos
+            word = words[t]
+            scores = word.senses[~np.all(word.senses == 0, axis=1)]
+
+            dist_1 = scores[:, 0]
+            dist_2 = scores[:, 1]
+            jensenshannon = dist.jensenshannon(
+                dist_1, dist_2)
+            results.append((recombine, jensenshannon))
+
         with open(os.path.join(os.path.join(args.output, 'task1'),
                                'english.txt'), 'w') as f:
-            for i in range(len(targets)):
-                t = targets[i][0]
-                pos = targets[i][1]
-                recombine = t+'_'+pos
-                score = words[t].calculate()[0]
+            for i in results:
+                recombine = i[0]
+                score = i[1]
                 different = 1 if score > args.threshold else 0
                 f.write(f'{recombine} {different}\n')
-        with open(os.path.join(os.path.join(args.output, 'task2'), 'english.txt'), 'w') as f:
-            for i in range(len(targets)):
-                t = targets[i][0]
-                pos = targets[i][1]
-                recombine = t+'_'+pos
-                word = words[t]
-                scores = word.senses[~np.all(word.senses == 0, axis=1)]
 
-                dist_1 = scores[:, 0]
-                dist_2 = scores[:, 1]
-                jensenshannon = dist.jensenshannon(
-                    dist_1, dist_2)
+        with open(os.path.join(os.path.join(args.output, 'task2'), 'english.txt'), 'w') as f:
+            for i in results:
+                recombine = i[0]
+                jensenshannon = i[1]
                 f.write(f'{recombine} {jensenshannon:.4f}\n')
 
     else:
