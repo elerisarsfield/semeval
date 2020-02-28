@@ -114,7 +114,7 @@ def main():
             t = targets[i][0]
             pos = targets[i][1]
             recombine = t+'_'+pos
-            word = words[t]
+            word = words[recombine]
             scores = word.senses[~np.all(word.senses == 0, axis=1)]
 
             dist_1 = scores[:, 0]

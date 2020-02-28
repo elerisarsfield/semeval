@@ -132,12 +132,11 @@ class Corpus:
                         a = self.word_to_idx[l]
                         b = self.word_to_idx[k]
                         cooccurences[a, b] += 1
-
-        reciprocal = 1/sum(self.word_counts.values())
         print('Computing PPMI...')
         ppmi = sparse.dok_matrix(shape)
         total = np.sum(cooccurences)
-        for i, j in zip(np.nonzero(cooccurences)[0], np.nonzero(cooccurences)[1]):
+        for i, j in zip(
+                np.nonzero(cooccurences)[0], np.nonzero(cooccurences)[1]):
             index_i = self.idx_to_word[i]
             index_j = self.idx_to_word[j]
             frequency = cooccurences[i, j]
