@@ -70,9 +70,6 @@ def main():
     hdp = HDP(corpus.vocab_size, save_path, eta=args.eta,
               alpha=args.alpha, gamma=args.gamma)
     hdp.init_partition(corpus.docs)
-    for i in corpus.docs:
-        i.topic_to_distribution(hdp.senses.shape[0])
-
     print('Done')
     it = 0
     print(f'Running Gibbs sampling for {args.max_iters} iterations...')
@@ -140,10 +137,10 @@ def main():
     else:
         for k, v in words.items():
             words[k] = v.calculate()
-            top_k = 50
-            top = sorted(words, key=words.get, reverse=True)[:top_k]
-            print(f'Top {top_k} most differing words:')
-            print(top)
+        top_k = 50
+        top = sorted(words, key=words.get, reverse=True)[:top_k]
+        print(f'Top {top_k} most differing words:')
+        print(top)
     end_time = time.time()
     print(f'Ran project in {end_time - start_time} seconds')
 

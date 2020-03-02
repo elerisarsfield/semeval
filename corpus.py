@@ -32,13 +32,7 @@ class Document():
         self.idx = idx
         self.partition = []
         self.topic_to_global_idx = []
-        self.global_to_local_topic = dict()
-        counts = collections.Counter(doc)
-        self.words = list(counts.keys())
-        self.counts = list(counts.values())
-        self.length = len(self.words) - 1
-        self.total = sum(self.counts)
-        self.topics = []
+        self.words = doc
         self.category = category
 
     def init_partition(self, alpha):
@@ -61,12 +55,6 @@ class Document():
                     if curr > table:
                         self.partition[j].append(i)
                         break
-
-    def topic_to_distribution(self, topics, eta=0.1):
-        self.topics = np.fromiter((eta*self.topic_to_global_idx.count(
-            i) if i in self.topic_to_global_idx else 0 for i in np.arange(
-                topics)),
-            dtype=np.float32, count=topics)
 
 
 class Corpus:
@@ -110,7 +98,6 @@ class Corpus:
                 stopwords.add(i[0])
         for i, s in enumerate(sentences):
             sentences[i] = [i for i in s.split(' ') if i not in stopwords]
-            self.total_words += len(sentences[i])
         self.word_counts += collections.Counter(
             [j for i in sentences for j in i])
         return [i for i in sentences if len(i) > 0]
