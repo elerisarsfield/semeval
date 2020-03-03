@@ -78,8 +78,7 @@ def main():
             for i in range(len(j.words)):
                 hdp.sample_table(j, i, corpus.collocations[j.words[i]])
         it += 1
-        if it % 5 == 0:
-            corpus.save()
+        corpus.save()
         print(f'Iteration {it}/{args.max_iters}')
     for i in hdp.senses:
         i /= i.sum()
