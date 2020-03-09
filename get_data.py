@@ -27,13 +27,14 @@ def scrape():
     stopwords = nltk.corpus.stopwords.words('english')
     for i in stopwords:
         while curr > end:
-            since = curr.strftime("%Y-%m-%d")
-            curr -= datetime.timedelta(days=1)
             until = curr.strftime("%Y-%m-%d")
+            curr -= datetime.timedelta(days=1)
+            since = curr.strftime("%Y-%m-%d")
             config.Since = since
             config.Until = until
             config.Search = i
             twint.run.Search(config)
+        curr = datetime.datetime(2020, 3, 1)
 
 
 def process(filepath):
@@ -43,3 +44,7 @@ def process(filepath):
     write = "\n".join(cleaned)
     with open(filepath[:-4]+".txt", 'w') as f:
         f.write(write)
+
+
+if __name__ == '__main__':
+    scrape()
