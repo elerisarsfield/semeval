@@ -40,11 +40,8 @@ def scrape():
 def process(filepath):
     data = pd.read_csv(filepath)
     text = list(data.tweet.values)
-    cleaned = map(lambda x: re.sub('[@#\n]|pic.twitter.com/.*|', '', x), text)
+    cleaned = map(lambda x: re.sub(
+        '[#\n]|pic.twitter.com/.*|@\S*|http(s)?://\S*', '', x), text)
     write = "\n".join(cleaned)
     with open(filepath[:-4]+".txt", 'w') as f:
         f.write(write)
-
-
-if __name__ == '__main__':
-    scrape()
