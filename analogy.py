@@ -1,8 +1,13 @@
+"""
+Demonstration of the Chinese Restaurant Franchise analogy of the Hierarchical Dirichlet Process
+"""
 import random
 import math
 
 
 class CRP:
+    """Demonstrate the Chinese Restaurant Process"""
+
     def __init__(self, alpha):
         self.N = 0
         self.alpha = alpha
@@ -12,6 +17,7 @@ class CRP:
     def draw(self):
         """Randomly choose a table to sit at."""
         self.N += 1
+        # Determine probabilities
         prior = [0] * len(self.tables)
         for i in range(len(self.tables)):
             probability = len(self.tables[i])/(self.N+self.alpha-1)
@@ -19,6 +25,7 @@ class CRP:
         new = self.alpha/(self.N+self.alpha-1)
         prior.append(new)
         assert math.isclose(sum(prior), 1)
+        # Sit at a table
         table = random.random()
         if table > sum(prior[:-1]):
             self.tables.append([self.N])
@@ -34,6 +41,8 @@ class CRP:
 
 
 class CRF(CRP):
+    """Demonstrate the Chinese Restaurant Franchise"""
+
     def __init__(self, alpha, gamma, j):
         super().__init__(alpha)
         self.gamma = gamma
@@ -46,6 +55,7 @@ class CRF(CRP):
         self.table_dishes = []
 
     def draw(self):
+        """Select a table and a dish (where necessary)"""
         table = super().draw()
         restaurant = random.randint(0, len(self.restaurants) - 1)
         if not self.new:
@@ -55,6 +65,7 @@ class CRF(CRP):
             self.restaurants[restaurant].append(table)
             self.new = False
             self.table_dishes.append(None)
+            # Determine dish probabilities
             prior = [0] * len(self.dishes)
             for i in range(len(self.dishes)):
                 probability = self.dishes[i]/(self.N+self.gamma-1)
@@ -62,6 +73,7 @@ class CRF(CRP):
             new = self.gamma/(self.N+self.gamma-1)
             prior.append(new)
             assert math.isclose(sum(prior), 1)
+            # Select a dish
             dish = random.random()
             if dish > sum(prior[:-1]):
                 self.dishes.append(1)

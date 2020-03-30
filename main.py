@@ -1,3 +1,4 @@
+"""Runs the project"""
 import nltk
 import scipy.spatial.distance as dist
 import numpy as np
@@ -8,6 +9,7 @@ import utils
 from corpus import Corpus, Word
 from hdp import HDP
 
+# command line options
 parser = argparse.ArgumentParser()
 parser.add_argument(
     'start_corpus', type=str, help='address of the older (reference) corpus')
@@ -39,7 +41,9 @@ if args.semeval_mode and 'targets' not in vars(args):
 
 
 def main():
+    """Run the project"""
     start_time = time.time()
+
     try:
         nltk.data.find('corpora/stopwords')
     except LookupError:
@@ -138,8 +142,9 @@ def main():
             words[k] = v.calculate()
         top_k = 50
         top = sorted(words, key=words.get, reverse=True)[:top_k]
-        print(f'Top {top_k} most differing words:')
-        print(top)
+        with open('out.txt', 'w') as f:
+            f.write(f'Top {top_k} most differing words:')
+            f.write(top)
     end_time = time.time()
     print(f'Ran project in {end_time - start_time} seconds')
 

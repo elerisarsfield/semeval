@@ -1,3 +1,7 @@
+"""
+Processing for information as language - corpora, documents and words
+"""
+
 import math
 import random
 import nltk
@@ -9,7 +13,18 @@ from scipy import sparse
 
 
 class Word():
+    """Class for representing words and their senses"""
+
     def __init__(self, word, idx, senses):
+        """
+        Set up the word
+
+        Parameters
+        ----------
+        word: the word being represented
+        idx: the word's id in the vocabulary
+        senses: the instances of the word in each sense
+        """
         self.word = word
         self.idx = idx
         self.senses = np.zeros((senses, 2))
@@ -18,7 +33,9 @@ class Word():
         """
         Calculate the score according to novelty_diff method in Cook et al 2014
 
-        Returns: (max score, novel sense index)
+        Returns
+        -------
+        tuple of (max score, corresponding index)
         """
         indices = np.unique(np.nonzero(self.senses))
         stripped = self.senses[~np.all(self.senses == 0, axis=1)]
@@ -28,7 +45,18 @@ class Word():
 
 
 class Document():
+    """Represents each document in a corpus"""
+
     def __init__(self, idx, doc, category):
+        """
+        Set up the document
+
+        Parameters
+        ----------
+        idx: the documents's id in the corpus
+        doc: a document in bag-of-words format
+        category: whether the document is in reference or focus corpus
+        """
         self.idx = idx
         self.partition = []
         self.topic_to_global_idx = []
@@ -36,15 +64,24 @@ class Document():
         self.category = category
 
     def init_partition(self, alpha):
+        """
+        Setup the initial document partition according to CRP
+
+        Parameters
+        ----------
+        alpha: value of alpha concentration parameter
+        """
         N = 0
         for i in self.words:
             N += 1
+            # Determine prior probabilities
             prior = [0] * len(self.partition)
             for j in range(len(self.partition)):
                 probability = len(self.partition[j])/(N+alpha-1)
                 prior[j] = probability
             new = alpha/(N+alpha-1)
             prior.append(new)
+            # Pick a table
             table = random.random()
             if table > sum(prior[:-1]):
                 self.partition.append([i])
@@ -58,9 +95,21 @@ class Document():
 
 
 class Corpus:
+    """Represents a corpus"""
+
     def __init__(self, reference, output, focus=None, floor=1,
                  window_size=10):
-        """Basic preprocessing and identify collocations"""
+        """
+        Set up the corpus
+
+        Parameters
+        ----------
+        reference: address of the reference corpus
+        output: location to write saves to
+        focus: address of the focus corpus
+        floor: minimum number of word occurrences to require
+        window_size: size of word window to consider
+        """
         self.floor = floor + 1
         self.total_words = 0
         self.vocab_size = 0
@@ -76,7 +125,18 @@ class Corpus:
         self.collocations(self.sentences, window_size)
 
     def get_documents(self, filepath, origin):
-        """Split text into sentences and extract word counts"""
+        """
+        Split text into sentences and extract word counts
+
+        Parameters
+        ----------
+        filepath: address of the document
+        origin: whether reference or focus corpus
+
+        Returns
+        -------
+        List of documents in bag-of-words format
+        """
         with open(filepath, 'r') as f:
             sentences = self.preprocess([i.strip() for i in f])
             self.word_to_idx = {i: o for o,
@@ -90,6 +150,17 @@ class Corpus:
             return sentences
 
     def preprocess(self, sentences):
+        """
+        Preprocess a list of documents
+
+        Parameters
+        ----------
+        sentences: list of documents
+
+        Returns
+        -------
+        List of documents in bag-of-words format
+        """
         words = [j for i in sentences for j in nltk.word_tokenize(i)]
         word_counts = collections.Counter(words)
         stopwords = set(nltk.corpus.stopwords.words('english'))
@@ -103,10 +174,18 @@ class Corpus:
         return [i for i in sentences if len(i) > 0]
 
     def collocations(self, corpus, window_size=10):
-        """Build the co-occurence matrix"""
+        """
+        Build the co-occurence matrix
+
+        Parameters
+        ----------
+        corpus: list of documents in bag-of-words format
+        window_size: size of word window to consider        
+        """
         shape = (self.vocab_size, self.vocab_size)
         print('Starting co-occurence matrix build...')
         cooccurences = sparse.dok_matrix(shape)
+        # Calculate raw occurrences
         for i in corpus:
             for j, k in enumerate(i):
                 if k not in self.word_to_idx:
@@ -122,6 +201,7 @@ class Corpus:
         print('Computing PPMI...')
         ppmi = sparse.dok_matrix(shape)
         total = np.sum(cooccurences)
+        # Compute PPMI
         for i, j in zip(
                 np.nonzero(cooccurences)[0], np.nonzero(cooccurences)[1]):
             index_i = self.idx_to_word[i]

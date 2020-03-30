@@ -1,3 +1,8 @@
+"""
+Contains the Hierarchical Dirchlet Process model
+Based on `Hierarchical Dirichlet Processes (Teh et al., 2004)
+<http://www.stats.ox.ac.uk/~teh/research/npbayes/hdp2004.pdf>`_.
+"""
 import random
 import numpy as np
 import os
@@ -5,7 +10,19 @@ import pickle
 
 
 class HDP():
-    def __init__(self, vocab_size, output, eta=0.1, alpha=1, gamma=1):
+    """Class for the HDP model"""
+
+    def __init__(self, vocab_size, output, alpha=1, gamma=1):
+        """
+        Set up the HDP model
+
+        Parameters
+        ----------
+        vocab_size: number of unique words in the corpus
+        output: location to write saves to
+        alpha: value of the alpha concentration parameter
+        gamma: value of the gamma concentration parameter
+        """
         self.alpha = alpha
         self.gamma = gamma
         self.senses = []
@@ -14,20 +31,29 @@ class HDP():
         self.output = output
 
     def init_partition(self, documents):
+        """
+        Setup the initial partition
+
+        Parameters
+        ---------
+        documents: list of documents, each document already partitioned
+        """
         N = 0
         senses = []
         for i, d in enumerate(documents):
             for j in range(len(d.partition)):
                 N += 1
+                # Determine prior
                 prior = [0] * len(self.sense_indices)
                 for k in range(len(self.sense_indices)):
                     probability = len(self.sense_indices[k])/(N+self.gamma-1)
                     prior[k] = probability
                 new = self.gamma/(N+self.gamma-1)
                 prior.append(new)
+                # Pick table
                 sense = random.random()
+                # Sit at new table
                 if sense > sum(prior[:-1]):
-
                     self.sense_indices.append([(i, j)])
                     senses.append(np.fromiter(
                         (1 if i in d.partition[j] else 0
@@ -35,6 +61,7 @@ class HDP():
                         count=self.vocab_size))
                     d.topic_to_global_idx.append(
                         len(self.sense_indices)-1)
+                # Sit at already populated table
                 else:
                     curr = 0
                     for k, p in enumerate(prior):
@@ -50,12 +77,22 @@ class HDP():
         self.senses = np.array(senses)
 
     def sample_table(self, j, i, ppmi):
+        """
+        Resample the table allocation of word x_ji
+
+        Parameters
+        ----------
+        j: index of the document
+        i: index of the word inside the document
+        ppmi: PPMI values for word x_ji
+        """
         x = j.words[i]
         total_assigned = np.count_nonzero(self.senses)
         prior_d = ppmi.sum() * (self.gamma/(self.gamma + total_assigned))
         cond = np.zeros((len(j.partition) + 1,))
         new_cond_p = 0
         curr, global_curr = -1, -1
+        # Determine distribution
         for t, p in enumerate(j.partition):
             size = len(p)
             if x in p:
@@ -74,6 +111,7 @@ class HDP():
             cond /= cond.sum()
         else:
             return
+        # Select a table
         sample = random.random()
         pos = 0
         for t, v in enumerate(cond):
@@ -96,6 +134,7 @@ class HDP():
                     j.partition[curr].remove(x)
                     j.partition.append([x])
                     j.topic_to_global_idx.append(topic)
+                    # Select an existing topic
                     if topic < len(self.senses):
                         if topic != global_curr:
                             self.senses[global_curr][x] -= 1
@@ -109,6 +148,7 @@ class HDP():
                         self.senses = np.concatenate((self.senses, new))
                         self.sense_indices.append(
                             (j.idx, len(j.partition) - 1))
+                # remove empty entries
                 if not all(j.partition):
                     t = j.partition.index([])
                     del j.partition[t]
@@ -118,6 +158,13 @@ class HDP():
                 break
 
     def sample_topic(self, ppmi):
+        """
+        Select a topic for a new table
+
+        Parameters
+        ---------
+        ppmi: PPMI values of new word
+        """
         cond = np.zeros((self.senses.shape[0] + 1,))
         for k in range(self.senses.shape[0]):
             size = np.count_nonzero(self.senses[k])
@@ -135,6 +182,13 @@ class HDP():
         return len(cond) - 1
 
     def save(self, it):
+        """
+        Save current model to file
+
+        Parameters
+        ---------
+        it: how many iterations the model has run
+        """
         filename = 'senses_'+str(it)+'.pkl'
         out = os.path.join(self.output, filename)
         pickle.dump(self, open(out, 'wb'))
