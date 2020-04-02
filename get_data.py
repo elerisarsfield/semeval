@@ -39,7 +39,7 @@ def scrape():
     for i in stopwords:
         while curr > end:
             until = curr.strftime("%Y-%m-%d")
-            curr -= datetime.timedelta(days=365)
+            curr -= datetime.timedelta(days=1)
             since = curr.strftime("%Y-%m-%d")
             config.Since = since
             config.Until = until
