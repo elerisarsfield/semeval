@@ -26,8 +26,6 @@ parser.add_argument('--alpha', type=float, default=1.0,
                     help='alpha value, default 1.0')
 parser.add_argument('--gamma', type=float, default=1.0,
                     help='gamma value, default 1.0')
-parser.add_argument('--eta', type=float, default=0.1,
-                    help='eta value, default 0.1')
 parser.add_argument('--window_size', metavar='W', type=int, default=10,
                     help='size of context window to use, default 10')
 parser.add_argument('--floor', type=int, metavar='F', default=1,
@@ -71,7 +69,7 @@ def main():
     for i in corpus.docs:
         i.init_partition(args.alpha)
 
-    hdp = HDP(corpus.vocab_size, save_path, eta=args.eta,
+    hdp = HDP(corpus.vocab_size, save_path, 
               alpha=args.alpha, gamma=args.gamma)
     hdp.init_partition(corpus.docs)
     print('Done')
