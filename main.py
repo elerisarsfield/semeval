@@ -143,7 +143,7 @@ def main():
         top = sorted(words, key=words.get, reverse=True)[:args.top_k]
         with open(os.path.join(args.output, 'out.txt'), 'w') as f:
             f.write(f'Top {args.top_k} most differing words:')
-            f.write(top)
+            f.write('\n'.join(top))
     end_time = time.time()
     print(f'Ran project in {end_time - start_time} seconds')
 
