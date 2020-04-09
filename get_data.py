@@ -64,9 +64,3 @@ def process(data, filepath):
     write = "\n".join(cleaned)
     with open(filepath, 'w') as f:
         f.write(write)
-
-
-# run the scripts
-if __name__ == '__main__':
-    scrape()
-    partition()

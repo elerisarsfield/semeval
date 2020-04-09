@@ -1,7 +1,6 @@
-
 # Automatic Identification of Novel Word Senses in Social Media
 ## About the Project
-This project applies techniques based on word sense induction for determining instances of novel word senses. In the `get_data` file there are scripts for scraping social media data to provide the corpora for the project.
+This project applies techniques based on word sense induction for determining instances of novel word senses. In the `get_data` file there are scripts for scraping social media data to provide the corpora for the project. 
 ## Requirements
 The project is in Python, and requires a version of at least **3.6**. To install the required libraries, run
 ```
@@ -21,4 +20,4 @@ when using for evaluation on SemEval, and with
 ```
 python main.py corpus1 corpus2 output
 ```
-otherwise. 
+otherwise. Running the project in SemEval mode produces a file with the the binary classification of word sense change and a file with the Jensen-Shannon distance for all words in the file containing target words. Running the project for the final project produces a file with the *k* words identified as having changed the most, where *k* is a model hyperparameter with a default of 25.

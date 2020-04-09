@@ -20,6 +20,8 @@ parser.add_argument('--semeval_mode', type=bool,
 parser.add_argument('targets', type=str,
                     help='address of the target words', nargs='?')
 parser.add_argument('output', type=str, help='address to write output to')
+parser.add_argument('--top_k', type=int, metavar='k',
+                    default=25, help='number of words to output')
 parser.add_argument('--max_iters', type=int, metavar='N', default=25,
                     help='maximum number of iterations to run sampling for')
 parser.add_argument('--alpha', type=float, default=1.0,
@@ -31,7 +33,7 @@ parser.add_argument('--window_size', metavar='W', type=int, default=10,
 parser.add_argument('--floor', type=int, metavar='F', default=1,
                     help='minimum number of occurrences to be considered, default 1')
 parser.add_argument('--threshold', type=float, metavar='T', default=0.6,
-                    help='minimum score for novelty_diff before a word is considered to have a novel sense')
+                    help='minimum score for  before a word is considered to have a novel sense')
 
 args = parser.parse_args()
 if args.semeval_mode and 'targets' not in vars(args):
@@ -69,7 +71,7 @@ def main():
     for i in corpus.docs:
         i.init_partition(args.alpha)
 
-    hdp = HDP(corpus.vocab_size, save_path, 
+    hdp = HDP(corpus.vocab_size, save_path,
               alpha=args.alpha, gamma=args.gamma)
     hdp.init_partition(corpus.docs)
     print('Done')
@@ -138,10 +140,9 @@ def main():
     else:
         for k, v in words.items():
             words[k] = v.calculate()
-        top_k = 50
-        top = sorted(words, key=words.get, reverse=True)[:top_k]
-        with open('out.txt', 'w') as f:
-            f.write(f'Top {top_k} most differing words:')
+        top = sorted(words, key=words.get, reverse=True)[:args.top_k]
+        with open(os.path.join(args.output, 'out.txt'), 'w') as f:
+            f.write(f'Top {args.top_k} most differing words:')
             f.write(top)
     end_time = time.time()
     print(f'Ran project in {end_time - start_time} seconds')
