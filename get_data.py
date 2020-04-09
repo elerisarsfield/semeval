@@ -13,7 +13,7 @@ def partition():
     Read tweet data from a CSV and partition into reference and focus corpora by date
     """
     tweets = pd.read_csv('tweets.csv')
-    tweets = tweets[:1000000]
+    tweets = tweets[:500000]
     tweets = tweets.loc[:, tweets.columns.intersection(
         ['date', 'tweet'])]
     tweets = tweets.sort_values(by='date')
