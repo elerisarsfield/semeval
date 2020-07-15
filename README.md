@@ -1,4 +1,4 @@
-# Automatic Identification of Novel Word Senses in Social Media
+# SemEval-2020 Task 1: Automatic Identification of Novel Word Senses and its Application to Social Media
 ## About the Project
 This project applies techniques based on word sense induction for determining instances of novel word senses. In the `get_data` file there are scripts for scraping social media data to provide the corpora for the project. 
 ## Requirements
